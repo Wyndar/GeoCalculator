@@ -9,10 +9,27 @@ using Unity.VisualScripting;
 using System.Text;
 
 public class ApplicationManager : MonoBehaviour
+
+    //note F = Formation Factor
+
+    //F = c ÷ ( por ^ m )
+
+    //c = cementation factor
+    //m = cementation exponent
+    //F = 1 ÷ ( por ^ 2 ) (for limestones)
+    //F = 0.81 ÷ ( por ^ 2 ) or 0.62 ÷ ( por ^ 2.15 ) (for sands)
+    //Sw = Water Saturation
+    //Sw = ( F * Rw ÷ Rt ) ^ 1/n
+    //n = saturation exponent
+    //Sw = [ ( c * Rw ) ÷ ( por^m * Rt ) ] ^ 1/nSw = Water Saturation
+    //Sw = ( F * Rw ÷ Rt ) ^ 1/n
+    //n = saturation exponent
+    //Sw = [ ( c * Rw ) ÷ ( por^m * Rt ) ] ^ 1/n
 {
     private readonly ExtensionFilter[] dataExtensions = new[] { new ExtensionFilter("CSVs", "csv") };
     private readonly string warningString = "The following parameters have not been set: ";
-    [SerializeField] private TMP_InputField BHTField, TmsField, TdField, DField, RiField, RmfField, RmField, HField, PSPField, SPField, TfField, RwField, VshField;
+    [SerializeField] private TMP_InputField BHTField, TmsField, TdField, DField, RiField, RmfField, RmField, HField, PSPField, SPField;
+    [SerializeField] private TMP_InputField TfField, RwField, VshField, SwField, ShField;
     [SerializeField] private Button runButton, clearButton;
     [SerializeField] private GameObject warningPanel, outputContentPanel, singleInputPanel, bulkInputPanel;
     [SerializeField] private GameObject dataPanelPrefab;
@@ -20,11 +37,11 @@ public class ApplicationManager : MonoBehaviour
 
 
     private List<Dictionary<string, float>> data = new();
-    private List<Dictionary<string, float>> answers = new();
+    private List<Dictionary<string, float>> answers;
     //calc params
     private float BHT, Tms, Td, D, Ri, Rmf, Rm, H, PSP, SP;
     //calc answers
-    private float Tf, Rw, Vsh;
+    private float Tf, Rw, Vsh, Sw, Sh;
     public void RunCalc()
     {
         string error = NullCheck();
@@ -128,19 +145,22 @@ public class ApplicationManager : MonoBehaviour
         else
             SSP = SP;
         float Rwe = rmff * Mathf.Pow(10, SSP / (60 + (0.133f * Tf)));
-        float top = Rwe + (0.131f * Mathf.Pow(10, 1 / Mathf.Log(Tf / 19.9f) - 2));
-        float bottom = (-0.5f * Rwe) + Mathf.Pow(10, 0.0426f / Mathf.Log(Tf / 50.8f));
+        float top = Rwe + (0.131f * Mathf.Pow(10, 1 / Mathf.Log10(Tf / 19.9f) - 2));
+        float bottom = (-0.5f * Rwe) + Mathf.Pow(10, 0.0426f / Mathf.Log10(Tf / 50.8f));
         Rw = top / bottom;
         Vsh = 1 - PSP / SSP;
-        var entry = new Dictionary<string, float>();
-        entry["Tf"] = Tf;
-        entry["Rw"] = Rw;
-        entry["Vsh"] = Vsh;
+        //Sw = (F * Rw) / Rt~1 / 2
+        var entry = new Dictionary<string, float>
+        {
+            ["Tf"] = Tf,
+            ["Rw"] = Rw,
+            ["Vsh"] = Vsh
+        };
         answers.Add(entry);
     }
     private void SetAndCalculateValuesFromData()
     {
-        answers.Clear();
+        answers = new();
         for (var i = 0; i < data.Count; i++)
         {
             BHT = data[i]["BHT"];
