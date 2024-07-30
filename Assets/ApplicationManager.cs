@@ -7,6 +7,7 @@ using UnityEngine.UI;
 using TMPro;
 using Unity.VisualScripting;
 using System.Text;
+using UnityEngine.Networking;
 
 public class ApplicationManager : MonoBehaviour
 
@@ -29,6 +30,8 @@ public class ApplicationManager : MonoBehaviour
     private readonly ExtensionFilter[] dataExtensions = new[] { new ExtensionFilter("CSVs", "csv") };
     private readonly string warningString = "The following parameters have not been set: ";
     [SerializeField] private TMP_InputField BHTField, TmsField, TdField, DField, RiField, RmfField, RmField, HField, PSPField, SPField;
+    //optional parameter porosity
+    [SerializeField] private TMP_InputField PField;
     [SerializeField] private TMP_InputField TfField, RwField, VshField, SwField, ShField;
     [SerializeField] private Button runButton, clearButton;
     [SerializeField] private GameObject warningPanel, outputContentPanel, singleInputPanel, bulkInputPanel;
@@ -70,7 +73,7 @@ public class ApplicationManager : MonoBehaviour
     }
     private IEnumerator OutputRoutine(string url)
     {
-        var loader = new WWW(url);
+        var loader = new WWW (url);
         yield return loader;
         data = CSVReader.Read(loader.text);
         SetAndCalculateValuesFromData();
@@ -148,8 +151,9 @@ public class ApplicationManager : MonoBehaviour
         float top = Rwe + (0.131f * Mathf.Pow(10, 1 / Mathf.Log10(Tf / 19.9f) - 2));
         float bottom = (-0.5f * Rwe) + Mathf.Pow(10, 0.0426f / Mathf.Log10(Tf / 50.8f));
         Rw = top / bottom;
+        //float F = 1;
         Vsh = 1 - PSP / SSP;
-        //Sw = (F * Rw) / Rt~1 / 2
+        //Sw = Mathf.Pow((F * Rw) / Rt, 0.5f);
         var entry = new Dictionary<string, float>
         {
             ["Tf"] = Tf,
