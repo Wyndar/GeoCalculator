@@ -1312,7 +1312,6 @@ RectTransform:
   - {fileID: 2089831638}
   - {fileID: 270374772}
   - {fileID: 2073602109}
-  - {fileID: 168142856}
   m_Father: {fileID: 2113891881}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1383,7 +1382,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 168142855}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1391,7 +1390,7 @@ RectTransform:
   - {fileID: 2137677401}
   - {fileID: 1036108328}
   - {fileID: 2060843324}
-  m_Father: {fileID: 163591782}
+  m_Father: {fileID: 2113891881}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
@@ -5526,9 +5525,12 @@ MonoBehaviour:
   HField: {fileID: 37171338}
   PSPField: {fileID: 1727573742}
   SPField: {fileID: 455588093}
+  PField: {fileID: 0}
   TfField: {fileID: 1450717545}
   RwField: {fileID: 1758114663}
   VshField: {fileID: 409366582}
+  SwField: {fileID: 0}
+  ShField: {fileID: 0}
   runButton: {fileID: 1732049156}
   clearButton: {fileID: 477843595}
   warningPanel: {fileID: 168142855}
@@ -5538,6 +5540,7 @@ MonoBehaviour:
   dataPanelPrefab: {fileID: 1593252348979806607, guid: 9a5d55f21502b58459c775aea2a58bc6, type: 3}
   warningText: {fileID: 1036108329}
   switchButtonText: {fileID: 2041985539}
+  saveData: 
 --- !u!1 &901424926
 GameObject:
   m_ObjectHideFlags: 0
@@ -13373,6 +13376,7 @@ RectTransform:
   - {fileID: 155523139}
   - {fileID: 1189596404}
   - {fileID: 1261518416}
+  - {fileID: 168142856}
   - {fileID: 528836583}
   m_Father: {fileID: 663035196}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

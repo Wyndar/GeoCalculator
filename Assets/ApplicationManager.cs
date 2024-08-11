@@ -29,6 +29,8 @@ public class ApplicationManager : MonoBehaviour
 {
     private readonly ExtensionFilter[] dataExtensions = new[] { new ExtensionFilter("CSVs", "csv") };
     private readonly string warningString = "The following parameters have not been set: ";
+    private readonly string emptyDataWarningString = "There is no data in the file." + System.Environment.NewLine + "A blank template will be exported.";
+
     [SerializeField] private TMP_InputField BHTField, TmsField, TdField, DField, RiField, RmfField, RmField, HField, PSPField, SPField;
     //optional parameter porosity
     [SerializeField] private TMP_InputField PField;
@@ -38,9 +40,10 @@ public class ApplicationManager : MonoBehaviour
     [SerializeField] private GameObject dataPanelPrefab;
     [SerializeField] private TMP_Text warningText, switchButtonText;
 
+    public string saveData;
 
     private List<Dictionary<string, float>> data = new();
-    private List<Dictionary<string, float>> answers;
+    private List<Dictionary<string, float>> answers = new();
     //calc params
     private float BHT, Tms, Td, D, Ri, Rmf, Rm, H, PSP, SP;
     //calc answers
@@ -62,7 +65,12 @@ public class ApplicationManager : MonoBehaviour
         VshField.text= Vsh.ToSafeString();
     }
 
-    public void WarningClear() => warningPanel.SetActive(false);
+    public void WarningClear()
+    {
+        warningPanel.SetActive(false);
+        if (warningText.text.Contains(emptyDataWarningString))
+            SaveDataToFile();
+    }
     public void GetDataFile()
     {
         var paths = StandaloneFileBrowser.OpenFilePanel("Title", "", dataExtensions, false);
@@ -75,13 +83,25 @@ public class ApplicationManager : MonoBehaviour
     {
         var loader = new WWW (url);
         yield return loader;
+        data.Clear();
         data = CSVReader.Read(loader.text);
         SetAndCalculateValuesFromData();
     }
 
     public void SaveDataFile()
     {
-        string saveData = ToCSV();
+        saveData = ToCSV();
+        if (answers.Capacity > 0)
+        {
+            SaveDataToFile();
+            return;
+        }
+        warningPanel.SetActive(true);
+        warningText.text = emptyDataWarningString;
+    }
+
+    private void SaveDataToFile()
+    {
         var path = StandaloneFileBrowser.SaveFilePanel("CSV", "", "data", "csv");
         if (!string.IsNullOrEmpty(path))
             File.WriteAllText(path, saveData);
@@ -164,7 +184,7 @@ public class ApplicationManager : MonoBehaviour
     }
     private void SetAndCalculateValuesFromData()
     {
-        answers = new();
+        answers.Clear();
         for (var i = 0; i < data.Count; i++)
         {
             BHT = data[i]["BHT"];
