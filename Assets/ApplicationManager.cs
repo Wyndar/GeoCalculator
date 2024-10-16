@@ -1,3 +1,4 @@
+//The full program can be found at github.com/wyndar/GeoCalculator
 using SFB;
 using UnityEngine;
 using System.Collections;
@@ -8,9 +9,9 @@ using TMPro;
 using Unity.VisualScripting;
 using System.Text;
 using UnityEngine.Networking;
+using System.ComponentModel.Composition;
 
 public class ApplicationManager : MonoBehaviour
-
     //note F = Formation Factor
 
     //F = c ÷ ( por ^ m )
@@ -35,8 +36,9 @@ public class ApplicationManager : MonoBehaviour
     //optional parameter porosity
     [SerializeField] private TMP_InputField PField;
     [SerializeField] private TMP_InputField TfField, RwField, VshField, SwField, ShField;
-    [SerializeField] private Button runButton, clearButton;
-    [SerializeField] private GameObject warningPanel, outputContentPanel, singleInputPanel, bulkInputPanel;
+    [SerializeField] private Button runButton, clearButton, switchButton, homeButton, helpButton;
+    [SerializeField] private GameObject warningPanel, outputContentPanel, singleInputPanel, bulkInputPanel, homePanel, helpPanel;
+    [SerializeField] private GameObject activePanel;
     [SerializeField] private GameObject dataPanelPrefab;
     [SerializeField] private TMP_Text warningText, switchButtonText;
 
@@ -48,6 +50,8 @@ public class ApplicationManager : MonoBehaviour
     private float BHT, Tms, Td, D, Ri, Rmf, Rm, H, PSP, SP;
     //calc answers
     private float Tf, Rw, Vsh, Sw, Sh;
+
+    private void Start() => Home();
     public void RunCalc()
     {
         string error = NullCheck();
@@ -73,7 +77,7 @@ public class ApplicationManager : MonoBehaviour
     }
     public void GetDataFile()
     {
-        var paths = StandaloneFileBrowser.OpenFilePanel("Title", "", dataExtensions, false);
+        var paths = StandaloneFileBrowser.OpenFilePanel("Import Data", "", dataExtensions, false);
         if (paths.Length > 0)
         {
             StartCoroutine(OutputRoutine(new System.Uri(paths[0]).AbsoluteUri));
@@ -91,7 +95,7 @@ public class ApplicationManager : MonoBehaviour
     public void SaveDataFile()
     {
         saveData = ToCSV();
-        if (answers.Capacity > 0)
+        if (answers.Count > 0)
         {
             SaveDataToFile();
             return;
@@ -102,23 +106,40 @@ public class ApplicationManager : MonoBehaviour
 
     private void SaveDataToFile()
     {
-        var path = StandaloneFileBrowser.SaveFilePanel("CSV", "", "data", "csv");
+        var path = StandaloneFileBrowser.SaveFilePanel("Save Data", "", "data", "csv");
         if (!string.IsNullOrEmpty(path))
             File.WriteAllText(path, saveData);
     }
 
+    private void SetActivePanel(GameObject panel, string text)
+    {
+        if (activePanel != null)
+            activePanel.SetActive(false);
+        panel.SetActive(true);
+        activePanel = panel;
+        switchButtonText.text = text;
+    }
+
+    public void Home()
+    {
+        SetActivePanel(homePanel, "Start");
+        homeButton.gameObject.SetActive(false);
+        helpButton.gameObject.SetActive(true);
+    }
+    public void Help()
+    {
+        SetActivePanel(helpPanel, "Start");
+        helpButton.gameObject.SetActive(false);
+        homeButton.gameObject.SetActive(true);
+    }
     public void SwitchInput()
     {
-        if(bulkInputPanel.activeInHierarchy)
-        {
-            bulkInputPanel.SetActive(false);
-            singleInputPanel.SetActive(true);
-            switchButtonText.text = "Bulk Input";
-            return;
-        }
-        bulkInputPanel.SetActive(true);
-        singleInputPanel.SetActive(false);
-        switchButtonText.text = "Single Input";
+        helpButton.gameObject.SetActive(true);
+        homeButton.gameObject.SetActive(true);
+        if (activePanel == singleInputPanel)
+            SetActivePanel(bulkInputPanel, "Single Input");
+        else
+            SetActivePanel(singleInputPanel, "Bulk Input");  
     }
     private string NullCheck()
     {
@@ -148,6 +169,7 @@ public class ApplicationManager : MonoBehaviour
 
     private void Calc()
     {
+        warningPanel.SetActive(false);
         Tf = 0;
         Rw = 0;
         Vsh = 0;
@@ -185,24 +207,47 @@ public class ApplicationManager : MonoBehaviour
     private void SetAndCalculateValuesFromData()
     {
         answers.Clear();
+        if (data.Count == 0)
+        {
+            warningPanel.SetActive(true);
+            warningText.text = "Input Error!" + System.Environment.NewLine + "Try exporting an empty csv to add your data.";
+        }
         for (var i = 0; i < data.Count; i++)
         {
-            BHT = data[i]["BHT"];
-            Tms = data[i]["Tms"];
-            Td = data[i]["Td"];
-            D = data[i]["D"];
-            Rmf = data[i]["Rmf"];
-            Ri = data[i]["Ri"];
-            Rm = data[i]["Rm"];
-            H = data[i]["H"];
-            PSP = data[i]["PSP"];
-            SP = data[i]["SP"];
-            Calc();
-            GameObject x = Instantiate(dataPanelPrefab, outputContentPanel.transform);
-            x.GetComponent<DataPanel>().SetText(BHT, Tms, Td, D, Ri, Rmf, Rm, H, PSP, SP, Tf, Rw, Vsh);
-            outputContentPanel.GetComponent<RectTransform>().sizeDelta = new(outputContentPanel.GetComponent<RectTransform>().sizeDelta.x,
-                outputContentPanel.transform.childCount * 40);
+            try
+            {
+                BHT = data[i]["BHT"];
+                Tms = data[i]["Tms"];
+                Td = data[i]["Td"];
+                D = data[i]["D"];
+                Rmf = data[i]["Rmf"];
+                Ri = data[i]["Ri"];
+                Rm = data[i]["Rm"];
+                H = data[i]["H"];
+                PSP = data[i]["PSP"];
+                SP = data[i]["SP"];
+                Calc();
+                GameObject x = Instantiate(dataPanelPrefab, outputContentPanel.transform);
+                x.GetComponent<DataPanel>().SetText(BHT, Tms, Td, D, Ri, Rmf, Rm, H, PSP, SP, Tf, Rw, Vsh);
+                outputContentPanel.GetComponent<RectTransform>().sizeDelta = new(outputContentPanel.GetComponent<RectTransform>().sizeDelta.x,
+                    outputContentPanel.transform.childCount * 40);
+            }
+            catch
+            {
+                warningPanel.SetActive(true);
+                warningText.text = "Input Error!" + System.Environment.NewLine + "Try exporting an empty csv to add your data.";
+            }
         }
+    }
+
+    public void ClearData()
+    {
+        data.Clear();
+        answers.Clear();
+        if (outputContentPanel.transform.childCount == 0)
+            return;
+        for (int i = outputContentPanel.transform.childCount - 1; i >= 0; i--)
+            Destroy(outputContentPanel.transform.GetChild(i).gameObject);
     }
 
     private string ToCSV()
