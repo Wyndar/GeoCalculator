@@ -8,34 +8,16 @@ using UnityEngine.UI;
 using TMPro;
 using Unity.VisualScripting;
 using System.Text;
-using UnityEngine.Networking;
-using System.ComponentModel.Composition;
 
 public class ApplicationManager : MonoBehaviour
-    //note F = Formation Factor
-
-    //F = c ÷ ( por ^ m )
-
-    //c = cementation factor
-    //m = cementation exponent
-    //F = 1 ÷ ( por ^ 2 ) (for limestones)
-    //F = 0.81 ÷ ( por ^ 2 ) or 0.62 ÷ ( por ^ 2.15 ) (for sands)
-    //Sw = Water Saturation
-    //Sw = ( F * Rw ÷ Rt ) ^ 1/n
-    //n = saturation exponent
-    //Sw = [ ( c * Rw ) ÷ ( por^m * Rt ) ] ^ 1/nSw = Water Saturation
-    //Sw = ( F * Rw ÷ Rt ) ^ 1/n
-    //n = saturation exponent
-    //Sw = [ ( c * Rw ) ÷ ( por^m * Rt ) ] ^ 1/n
 {
     private readonly ExtensionFilter[] dataExtensions = new[] { new ExtensionFilter("CSVs", "csv") };
     private readonly string warningString = "The following parameters have not been set: ";
-    private readonly string emptyDataWarningString = "There is no data in the file." + System.Environment.NewLine + "A blank template will be exported.";
+    private readonly string emptyDataWarningString = "There is no data in the file." + System.Environment.NewLine + 
+        "A blank template will be exported.";
 
     [SerializeField] private TMP_InputField BHTField, TmsField, TdField, DField, RiField, RmfField, RmField, HField, PSPField, SPField;
-    //optional parameter porosity
-    [SerializeField] private TMP_InputField PField;
-    [SerializeField] private TMP_InputField TfField, RwField, VshField, SwField, ShField;
+    [SerializeField] private TMP_InputField TfField, RwField, VshField;
     [SerializeField] private Button runButton, clearButton, switchButton, homeButton, helpButton;
     [SerializeField] private GameObject warningPanel, outputContentPanel, singleInputPanel, bulkInputPanel, homePanel, helpPanel;
     [SerializeField] private GameObject activePanel;
@@ -49,7 +31,7 @@ public class ApplicationManager : MonoBehaviour
     //calc params
     private float BHT, Tms, Td, D, Ri, Rmf, Rm, H, PSP, SP;
     //calc answers
-    private float Tf, Rw, Vsh, Sw, Sh;
+    private float Tf, Rw, Vsh;
 
     private void Start() => Home();
     public void RunCalc()
@@ -193,9 +175,7 @@ public class ApplicationManager : MonoBehaviour
         float top = Rwe + (0.131f * Mathf.Pow(10, 1 / Mathf.Log10(Tf / 19.9f) - 2));
         float bottom = (-0.5f * Rwe) + Mathf.Pow(10, 0.0426f / Mathf.Log10(Tf / 50.8f));
         Rw = top / bottom;
-        //float F = 1;
         Vsh = 1 - PSP / SSP;
-        //Sw = Mathf.Pow((F * Rw) / Rt, 0.5f);
         var entry = new Dictionary<string, float>
         {
             ["Tf"] = Tf,
