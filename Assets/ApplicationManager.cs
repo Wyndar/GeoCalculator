@@ -1,20 +1,21 @@
 //The full program can be found at github.com/wyndar/GeoCalculator
 using SFB;
+using System;
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using UnityEngine.UI;
 using TMPro;
-using Unity.VisualScripting;
 using System.Text;
+// ReSharper disable InconsistentNaming
 
 public class ApplicationManager : MonoBehaviour
 {
     private readonly ExtensionFilter[] dataExtensions = new[] { new ExtensionFilter("CSVs", "csv") };
-    private readonly string warningString = "The following parameters have not been set: ";
-    private readonly string emptyDataWarningString = "There is no data in the file." + System.Environment.NewLine + 
-        "A blank template will be exported.";
+    private const string warningString = "The following parameters have not been set: ";
+    private readonly string emptyDataWarningString = "There is no data in the file." + Environment.NewLine + 
+                                                     "A blank template will be exported.";
 
     [SerializeField] private TMP_InputField BHTField, TmsField, TdField, DField, RiField, RmfField, RmField, HField, PSPField, SPField;
     [SerializeField] private TMP_InputField TfField, RwField, VshField;
@@ -26,14 +27,14 @@ public class ApplicationManager : MonoBehaviour
 
     public string saveData;
 
-    private List<Dictionary<string, float>> data = new();
-    private List<Dictionary<string, float>> answers = new();
-    //calc params
-    private float BHT, Tms, Td, D, Ri, Rmf, Rm, H, PSP, SP;
-    //calc answers
-    private float Tf, Rw, Vsh;
+    private List<CalculationInput> data = new();
+    private readonly List<CalculationResult> answers = new();
+    private CalculationInput singleCalculationInput;
+    private CalculationResult singleCalculationResult;
+    private bool hasSingleCalculation;
 
     private void Start() => Home();
+
     public void RunCalc()
     {
         string error = NullCheck();
@@ -44,40 +45,42 @@ public class ApplicationManager : MonoBehaviour
             warningText.text = warningString + error;
             return;
         }
-        SetValues();
-        Calc();
-        TfField.text = Tf.ToSafeString();
-        RwField.text = Rw.ToSafeString();
-        VshField.text= Vsh.ToSafeString();
+        try
+        {
+            var input = ReadInputFields();
+            var result = Calculate(input);
+            singleCalculationInput = input;
+            singleCalculationResult = result;
+            hasSingleCalculation = true;
+            warningPanel.SetActive(false);
+            TfField.text = FormatFloat(result.Tf);
+            RwField.text = FormatFloat(result.Rw);
+            VshField.text = FormatFloat(result.Vsh);
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidOperationException)
+        {
+            hasSingleCalculation = false;
+            ShowWarning("Input Error!" + Environment.NewLine + ex.Message);
+        }
     }
 
     public void WarningClear()
     {
         warningPanel.SetActive(false);
-        if (warningText.text.Contains(emptyDataWarningString))
-            SaveDataToFile();
+        if (!warningText.text.Contains(emptyDataWarningString)) return;
+        SaveDataToFile();
     }
     public void GetDataFile()
     {
         var paths = StandaloneFileBrowser.OpenFilePanel("Import Data", "", dataExtensions, false);
-        if (paths.Length > 0)
-        {
-            StartCoroutine(OutputRoutine(new System.Uri(paths[0]).AbsoluteUri));
-        }
-    }
-    private IEnumerator OutputRoutine(string url)
-    {
-        var loader = new WWW (url);
-        yield return loader;
-        data.Clear();
-        data = CSVReader.Read(loader.text);
-        SetAndCalculateValuesFromData();
+        if (paths.Length <= 0) return;
+        LoadDataFile(paths[0]);
     }
 
     public void SaveDataFile()
     {
         saveData = ToCSV();
-        if (answers.Count > 0)
+        if (!string.IsNullOrEmpty(saveData))
         {
             SaveDataToFile();
             return;
@@ -149,113 +152,136 @@ public class ApplicationManager : MonoBehaviour
         return error;
     }
 
-    private void Calc()
+    private static CalculationResult Calculate(CalculationInput input)
     {
-        warningPanel.SetActive(false);
-        Tf = 0;
-        Rw = 0;
-        Vsh = 0;
-        float gD = (BHT - Tms) / Td * 100;
-        Tf = Tms + (gD * (D / 100));
-        float tempCorrection = (BHT + 6.77f) / (Tf + 6.77f);
-        float rmm = Rm * tempCorrection;
-        float rmff = Rmf * tempCorrection;
-        float shortNormalCorrectedResistivity = Ri / rmm;
+        if (Mathf.Approximately(input.Td, 0f))
+            throw new InvalidOperationException("Td cannot be zero.");
+
+        float gD = (input.BHT - input.Tms) / input.Td * 100;
+        float tf = input.Tms + (gD * (input.D / 100));
+        float tempCorrection = (input.BHT + 6.77f) / (tf + 6.77f);
+        float rmm = input.Rm * tempCorrection;
+        float rmff = input.Rmf * tempCorrection;
+        if (Mathf.Approximately(rmm, 0f))
+            throw new InvalidOperationException("Rm produces a zero resistivity correction.");
+
+        float shortNormalCorrectedResistivity = input.Ri / rmm;
         float SSP;
-        if (shortNormalCorrectedResistivity > 5 && H > 3 && H < 50)
+        if (shortNormalCorrectedResistivity > 5 && input.H is > 3 and < 50)
         {
             float t = Mathf.Pow(4 * (shortNormalCorrectedResistivity + 2f), 1 / 3.65f) - 1.5f;
-            float b = H - Mathf.Pow((shortNormalCorrectedResistivity + 11) / 0.65f, 1 / 6.05f) - 0.1f;
+            float b = input.H - Mathf.Pow((shortNormalCorrectedResistivity + 11) / 0.65f, 1 / 6.05f) - 0.1f;
             float SPcor = (t / b) + 0.95f;
-            SSP = SP * SPcor;
+            SSP = input.SP * SPcor;
         }
         else
-            SSP = SP;
-        float Rwe = rmff * Mathf.Pow(10, SSP / (60 + (0.133f * Tf)));
-        float top = Rwe + (0.131f * Mathf.Pow(10, 1 / Mathf.Log10(Tf / 19.9f) - 2));
-        float bottom = (-0.5f * Rwe) + Mathf.Pow(10, 0.0426f / Mathf.Log10(Tf / 50.8f));
-        Rw = top / bottom;
-        Vsh = 1 - PSP / SSP;
-        var entry = new Dictionary<string, float>
         {
-            ["Tf"] = Tf,
-            ["Rw"] = Rw,
-            ["Vsh"] = Vsh
-        };
-        answers.Add(entry);
+            SSP = input.SP;
+        }
+
+        if (Mathf.Approximately(SSP, 0f))
+            throw new InvalidOperationException("SP correction produces zero SSP.");
+
+        float rwe = rmff * Mathf.Pow(10, SSP / (60 + (0.133f * tf)));
+        float top = rwe + (0.131f * Mathf.Pow(10, 1 / Mathf.Log10(tf / 19.9f) - 2));
+        float bottom = (-0.5f * rwe) + Mathf.Pow(10, 0.0426f / Mathf.Log10(tf / 50.8f));
+        if (Mathf.Approximately(bottom, 0f))
+            throw new InvalidOperationException("Calculated Rw denominator is zero.");
+
+        float rw = top / bottom;
+        float vsh = 1 - input.PSP / SSP;
+
+        if (!IsFinite(tf) || !IsFinite(rw) || !IsFinite(vsh))
+            throw new InvalidOperationException("Calculation produced a non-finite result.");
+
+        return new CalculationResult(tf, rw, vsh);
     }
+
     private void SetAndCalculateValuesFromData()
     {
+        ClearOutputRows();
         answers.Clear();
+        hasSingleCalculation = false;
         if (data.Count == 0)
         {
             warningPanel.SetActive(true);
-            warningText.text = "Input Error!" + System.Environment.NewLine + "Try exporting an empty csv to add your data.";
+            warningText.text = "Input Error!" + Environment.NewLine + "Try exporting an empty csv to add your data.";
+            return;
         }
         for (var i = 0; i < data.Count; i++)
         {
             try
             {
-                BHT = data[i]["BHT"];
-                Tms = data[i]["Tms"];
-                Td = data[i]["Td"];
-                D = data[i]["D"];
-                Rmf = data[i]["Rmf"];
-                Ri = data[i]["Ri"];
-                Rm = data[i]["Rm"];
-                H = data[i]["H"];
-                PSP = data[i]["PSP"];
-                SP = data[i]["SP"];
-                Calc();
+                var result = Calculate(data[i]);
+                answers.Add(result);
                 GameObject x = Instantiate(dataPanelPrefab, outputContentPanel.transform);
-                x.GetComponent<DataPanel>().SetText(BHT, Tms, Td, D, Ri, Rmf, Rm, H, PSP, SP, Tf, Rw, Vsh);
-                outputContentPanel.GetComponent<RectTransform>().sizeDelta = new(outputContentPanel.GetComponent<RectTransform>().sizeDelta.x,
-                    outputContentPanel.transform.childCount * 40);
+                x.GetComponent<DataPanel>().SetText(data[i], result);
+                ResizeOutputContent();
             }
-            catch
+            catch (Exception ex) when (ex is FormatException or InvalidOperationException)
             {
-                warningPanel.SetActive(true);
-                warningText.text = "Input Error!" + System.Environment.NewLine + "Try exporting an empty csv to add your data.";
+                answers.Clear();
+                ClearOutputRows();
+                ShowWarning($"Input Error on row {i + 2}!{Environment.NewLine}{ex.Message}");
+                return;
             }
         }
+
+        warningPanel.SetActive(false);
     }
 
     public void ClearData()
     {
         data.Clear();
         answers.Clear();
-        if (outputContentPanel.transform.childCount == 0)
-            return;
-        for (int i = outputContentPanel.transform.childCount - 1; i >= 0; i--)
-            Destroy(outputContentPanel.transform.GetChild(i).gameObject);
+        hasSingleCalculation = false;
+        ClearOutputRows();
     }
 
     private string ToCSV()
     {
-        var sb = new StringBuilder("BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP,Tf,Rw,Vsh");
-        for (var i = 0; i < data.Count; i++)
+        if (data.Count > 0 && answers.Count == data.Count)
         {
-            sb.Append('\n').Append(data[i]["BHT"].ToString()).Append(',').Append(data[i]["Tms"].ToString()).Append(',').Append(data[i]["Td"].ToString())
-                .Append(',').Append(data[i]["D"].ToString()).Append(',').Append(data[i]["Rmf"].ToString()).Append(',').Append(data[i]["Ri"].ToString())
-                .Append(',').Append(data[i]["Rm"].ToString()).Append(',').Append(data[i]["H"].ToString()).Append(',').Append(data[i]["PSP"].ToString())
-                .Append(',').Append(data[i]["SP"].ToString()).Append(',').Append(answers[i]["Tf"].ToString()).Append(',').Append(answers[i]["Rw"].ToString())
-                .Append(',').Append(answers[i]["Vsh"].ToString());
+            var sb = new StringBuilder("BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP,Tf,Rw,Vsh");
+            for (var i = 0; i < data.Count; i++)
+            {
+                sb.Append('\n').Append(FormatFloat(data[i].BHT)).Append(',').Append(FormatFloat(data[i].Tms)).Append(',').Append(FormatFloat(data[i].Td))
+                    .Append(',').Append(FormatFloat(data[i].D)).Append(',').Append(FormatFloat(data[i].Ri)).Append(',').Append(FormatFloat(data[i].Rmf))
+                    .Append(',').Append(FormatFloat(data[i].Rm)).Append(',').Append(FormatFloat(data[i].H)).Append(',').Append(FormatFloat(data[i].PSP))
+                    .Append(',').Append(FormatFloat(data[i].SP)).Append(',').Append(FormatFloat(answers[i].Tf)).Append(',').Append(FormatFloat(answers[i].Rw))
+                    .Append(',').Append(FormatFloat(answers[i].Vsh));
+            }
+            return sb.ToString();
         }
-        return sb.ToString();
+
+        if (!hasSingleCalculation) return string.Empty;
+        {
+            var sb = new StringBuilder("BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP,Tf,Rw,Vsh");
+            sb.Append('\n').Append(FormatFloat(singleCalculationInput.BHT)).Append(',').Append(FormatFloat(singleCalculationInput.Tms)).Append(',').Append(FormatFloat(singleCalculationInput.Td))
+                .Append(',').Append(FormatFloat(singleCalculationInput.D)).Append(',').Append(FormatFloat(singleCalculationInput.Ri)).Append(',').Append(FormatFloat(singleCalculationInput.Rmf))
+                .Append(',').Append(FormatFloat(singleCalculationInput.Rm)).Append(',').Append(FormatFloat(singleCalculationInput.H)).Append(',').Append(FormatFloat(singleCalculationInput.PSP))
+                .Append(',').Append(FormatFloat(singleCalculationInput.SP)).Append(',').Append(FormatFloat(singleCalculationResult.Tf)).Append(',').Append(FormatFloat(singleCalculationResult.Rw))
+                .Append(',').Append(FormatFloat(singleCalculationResult.Vsh));
+            return sb.ToString();
+        }
+
     }
-    private void SetValues()
+
+    private CalculationInput ReadInputFields()
     {
-        BHT = float.Parse(BHTField.text);
-        Tms = float.Parse(TmsField.text);
-        Td = float.Parse(TdField.text);
-        D = float.Parse(DField.text);
-        Rmf = float.Parse(RmfField.text);
-        Ri = float.Parse(RiField.text);
-        Rm = float.Parse(RmField.text);
-        H = float.Parse(HField.text);
-        PSP = float.Parse(PSPField.text);
-        SP = float.Parse(SPField.text);
+        return new CalculationInput(
+            ParseInputFloat(BHTField.text),
+            ParseInputFloat(TmsField.text),
+            ParseInputFloat(TdField.text),
+            ParseInputFloat(DField.text),
+            ParseInputFloat(RiField.text),
+            ParseInputFloat(RmfField.text),
+            ParseInputFloat(RmField.text),
+            ParseInputFloat(HField.text),
+            ParseInputFloat(PSPField.text),
+            ParseInputFloat(SPField.text));
     }
+
     public void Clear()
     {
         BHTField.text = "";
@@ -268,5 +294,67 @@ public class ApplicationManager : MonoBehaviour
         HField.text = "";
         PSPField.text = "";
         SPField.text = "";
+        TfField.text = "";
+        RwField.text = "";
+        VshField.text = "";
+        warningPanel.SetActive(false);
+        hasSingleCalculation = false;
     }
+
+    private void ClearOutputRows()
+    {
+        if (outputContentPanel.transform.childCount > 0)
+        {
+            for (int i = outputContentPanel.transform.childCount - 1; i >= 0; i--)
+                Destroy(outputContentPanel.transform.GetChild(i).gameObject);
+        }
+
+        outputContentPanel.GetComponent<RectTransform>().sizeDelta = new(
+            outputContentPanel.GetComponent<RectTransform>().sizeDelta.x,
+            0);
+    }
+
+    private void LoadDataFile(string path)
+    {
+        try
+        {
+            data.Clear();
+            data = CSVReader.Read(File.ReadAllText(path));
+            SetAndCalculateValuesFromData();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
+        {
+            data.Clear();
+            answers.Clear();
+            ClearOutputRows();
+            ShowWarning("Input Error!" + Environment.NewLine + ex.Message);
+        }
+    }
+
+    private void ResizeOutputContent() =>
+        outputContentPanel.GetComponent<RectTransform>().sizeDelta = new Vector2(
+            outputContentPanel.GetComponent<RectTransform>().sizeDelta.x,
+            outputContentPanel.transform.childCount * 40);
+
+    private void ShowWarning(string message)
+    {
+        warningPanel.SetActive(true);
+        warningText.text = message;
+    }
+
+    private static string FormatFloat(float value) => value.ToString("G", CultureInfo.InvariantCulture);
+
+    private static float ParseInputFloat(string value)
+    {
+        const NumberStyles styles = NumberStyles.Float | NumberStyles.AllowThousands;
+
+        if (float.TryParse(value, styles, CultureInfo.CurrentCulture, out float currentCultureValue))
+            return currentCultureValue;
+
+        return float.TryParse(value, styles, CultureInfo.InvariantCulture, out float invariantValue) 
+            ? invariantValue 
+            : throw new FormatException($"Invalid numeric value: {value}");
+    }
+
+    private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 }
