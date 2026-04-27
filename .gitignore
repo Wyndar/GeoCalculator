@@ -26,6 +26,10 @@
 # Visual Studio cache directory
 .vs/
 
+# Local Codex and JetBrains project state
+.codex/
+.idea/
+
 # Gradle cache directory
 .gradle/
 
@@ -70,3 +74,6 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Local NuGet-style package extraction cache
+/packages/
