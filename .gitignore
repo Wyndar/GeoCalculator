@@ -27,6 +27,7 @@
 .vs/
 
 # Local Codex and JetBrains project state
+.codex
 .codex/
 .idea/
 
