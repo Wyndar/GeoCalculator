@@ -12,6 +12,7 @@ using System.Text;
 
 public class ApplicationManager : MonoBehaviour
 {
+    private const string CsvHeader = "BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP,Tf,Rw,Vsh";
     private readonly ExtensionFilter[] dataExtensions = new[] { new ExtensionFilter("CSVs", "csv") };
     private const string warningString = "The following parameters have not been set: ";
     private readonly string emptyDataWarningString = "There is no data in the file." + Environment.NewLine + 
@@ -240,31 +241,29 @@ public class ApplicationManager : MonoBehaviour
 
     private string ToCSV()
     {
+        var sb = new StringBuilder(CsvHeader);
+
         if (data.Count > 0 && answers.Count == data.Count)
         {
-            var sb = new StringBuilder("BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP,Tf,Rw,Vsh");
             for (var i = 0; i < data.Count; i++)
-            {
-                sb.Append('\n').Append(FormatFloat(data[i].BHT)).Append(',').Append(FormatFloat(data[i].Tms)).Append(',').Append(FormatFloat(data[i].Td))
-                    .Append(',').Append(FormatFloat(data[i].D)).Append(',').Append(FormatFloat(data[i].Ri)).Append(',').Append(FormatFloat(data[i].Rmf))
-                    .Append(',').Append(FormatFloat(data[i].Rm)).Append(',').Append(FormatFloat(data[i].H)).Append(',').Append(FormatFloat(data[i].PSP))
-                    .Append(',').Append(FormatFloat(data[i].SP)).Append(',').Append(FormatFloat(answers[i].Tf)).Append(',').Append(FormatFloat(answers[i].Rw))
-                    .Append(',').Append(FormatFloat(answers[i].Vsh));
-            }
+                AppendCsvRow(sb, data[i], answers[i]);
             return sb.ToString();
         }
 
-        if (!hasSingleCalculation) return string.Empty;
-        {
-            var sb = new StringBuilder("BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP,Tf,Rw,Vsh");
-            sb.Append('\n').Append(FormatFloat(singleCalculationInput.BHT)).Append(',').Append(FormatFloat(singleCalculationInput.Tms)).Append(',').Append(FormatFloat(singleCalculationInput.Td))
-                .Append(',').Append(FormatFloat(singleCalculationInput.D)).Append(',').Append(FormatFloat(singleCalculationInput.Ri)).Append(',').Append(FormatFloat(singleCalculationInput.Rmf))
-                .Append(',').Append(FormatFloat(singleCalculationInput.Rm)).Append(',').Append(FormatFloat(singleCalculationInput.H)).Append(',').Append(FormatFloat(singleCalculationInput.PSP))
-                .Append(',').Append(FormatFloat(singleCalculationInput.SP)).Append(',').Append(FormatFloat(singleCalculationResult.Tf)).Append(',').Append(FormatFloat(singleCalculationResult.Rw))
-                .Append(',').Append(FormatFloat(singleCalculationResult.Vsh));
-            return sb.ToString();
-        }
+        if (!hasSingleCalculation)
+            return string.Empty;
 
+        AppendCsvRow(sb, singleCalculationInput, singleCalculationResult);
+        return sb.ToString();
+    }
+
+    private static void AppendCsvRow(StringBuilder sb, CalculationInput input, CalculationResult result)
+    {
+        sb.Append('\n').Append(FormatFloat(input.BHT)).Append(',').Append(FormatFloat(input.Tms)).Append(',').Append(FormatFloat(input.Td))
+            .Append(',').Append(FormatFloat(input.D)).Append(',').Append(FormatFloat(input.Ri)).Append(',').Append(FormatFloat(input.Rmf))
+            .Append(',').Append(FormatFloat(input.Rm)).Append(',').Append(FormatFloat(input.H)).Append(',').Append(FormatFloat(input.PSP))
+            .Append(',').Append(FormatFloat(input.SP)).Append(',').Append(FormatFloat(result.Tf)).Append(',').Append(FormatFloat(result.Rw))
+            .Append(',').Append(FormatFloat(result.Vsh));
     }
 
     private CalculationInput ReadInputFields()
@@ -304,12 +303,10 @@ public class ApplicationManager : MonoBehaviour
     private void ClearOutputRows()
     {
         if (outputContentPanel.transform.childCount > 0)
-        {
             for (int i = outputContentPanel.transform.childCount - 1; i >= 0; i--)
                 Destroy(outputContentPanel.transform.GetChild(i).gameObject);
-        }
 
-        outputContentPanel.GetComponent<RectTransform>().sizeDelta = new(
+        outputContentPanel.GetComponent<RectTransform>().sizeDelta = new Vector2(
             outputContentPanel.GetComponent<RectTransform>().sizeDelta.x,
             0);
     }
