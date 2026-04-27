@@ -1,3 +1,4 @@
+// ReSharper disable InconsistentNaming
 public sealed class CalculationInput
 {
     public CalculationInput(float bht, float tms, float td, float d, float ri, float rmf, float rm, float h, float psp, float sp)

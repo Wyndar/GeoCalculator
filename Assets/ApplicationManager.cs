@@ -7,13 +7,10 @@ using System.IO;
 using System.Globalization;
 using UnityEngine.UI;
 using TMPro;
-using System.Text;
 // ReSharper disable InconsistentNaming
 
 public class ApplicationManager : MonoBehaviour
 {
-    private const string CsvHeader = "BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP,Tf,Rw,Vsh";
-    private readonly ExtensionFilter[] dataExtensions = new[] { new ExtensionFilter("CSVs", "csv") };
     private const string warningString = "The following parameters have not been set: ";
     private readonly string emptyDataWarningString = "There is no data in the file." + Environment.NewLine + 
                                                      "A blank template will be exported.";
@@ -25,8 +22,6 @@ public class ApplicationManager : MonoBehaviour
     [SerializeField] private GameObject activePanel;
     [SerializeField] private GameObject dataPanelPrefab;
     [SerializeField] private TMP_Text warningText, switchButtonText;
-
-    public string saveData;
 
     private List<CalculationInput> data = new();
     private readonly List<CalculationResult> answers = new();
@@ -73,15 +68,15 @@ public class ApplicationManager : MonoBehaviour
     }
     public void GetDataFile()
     {
-        var paths = StandaloneFileBrowser.OpenFilePanel("Import Data", "", dataExtensions, false);
+        var paths = StandaloneFileBrowser.OpenFilePanel("Import Data", "", 
+            DataFileSerializer.OpenFilters, false);
         if (paths.Length <= 0) return;
         LoadDataFile(paths[0]);
     }
 
     public void SaveDataFile()
     {
-        saveData = ToCSV();
-        if (!string.IsNullOrEmpty(saveData))
+        if (HasExportableData())
         {
             SaveDataToFile();
             return;
@@ -93,8 +88,18 @@ public class ApplicationManager : MonoBehaviour
     private void SaveDataToFile()
     {
         var path = StandaloneFileBrowser.SaveFilePanel("Save Data", "", "data", "csv");
-        if (!string.IsNullOrEmpty(path))
-            File.WriteAllText(path, saveData);
+        if (string.IsNullOrEmpty(path))
+            return;
+
+        try
+        {
+            DataFileSerializer.Write(path, data, answers, hasSingleCalculation ? singleCalculationInput : null,
+                hasSingleCalculation ? singleCalculationResult : null);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
+        {
+            ShowWarning("Save Error!" + Environment.NewLine + ex.Message);
+        }
     }
 
     private void SetActivePanel(GameObject panel, string text)
@@ -239,33 +244,6 @@ public class ApplicationManager : MonoBehaviour
         ClearOutputRows();
     }
 
-    private string ToCSV()
-    {
-        var sb = new StringBuilder(CsvHeader);
-
-        if (data.Count > 0 && answers.Count == data.Count)
-        {
-            for (var i = 0; i < data.Count; i++)
-                AppendCsvRow(sb, data[i], answers[i]);
-            return sb.ToString();
-        }
-
-        if (!hasSingleCalculation)
-            return string.Empty;
-
-        AppendCsvRow(sb, singleCalculationInput, singleCalculationResult);
-        return sb.ToString();
-    }
-
-    private static void AppendCsvRow(StringBuilder sb, CalculationInput input, CalculationResult result)
-    {
-        sb.Append('\n').Append(FormatFloat(input.BHT)).Append(',').Append(FormatFloat(input.Tms)).Append(',').Append(FormatFloat(input.Td))
-            .Append(',').Append(FormatFloat(input.D)).Append(',').Append(FormatFloat(input.Ri)).Append(',').Append(FormatFloat(input.Rmf))
-            .Append(',').Append(FormatFloat(input.Rm)).Append(',').Append(FormatFloat(input.H)).Append(',').Append(FormatFloat(input.PSP))
-            .Append(',').Append(FormatFloat(input.SP)).Append(',').Append(FormatFloat(result.Tf)).Append(',').Append(FormatFloat(result.Rw))
-            .Append(',').Append(FormatFloat(result.Vsh));
-    }
-
     private CalculationInput ReadInputFields()
     {
         return new CalculationInput(
@@ -316,7 +294,7 @@ public class ApplicationManager : MonoBehaviour
         try
         {
             data.Clear();
-            data = CSVReader.Read(File.ReadAllText(path));
+            data = DataFileSerializer.Read(path);
             SetAndCalculateValuesFromData();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
@@ -352,6 +330,8 @@ public class ApplicationManager : MonoBehaviour
             ? invariantValue 
             : throw new FormatException($"Invalid numeric value: {value}");
     }
+
+    private bool HasExportableData() => data.Count > 0 && answers.Count == data.Count || hasSingleCalculation;
 
     private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 }

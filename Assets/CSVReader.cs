@@ -1,31 +1,30 @@
 using System;
-using UnityEngine;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
+// ReSharper disable InconsistentNaming
 
-public class CSVReader
+public static class CSVReader
 {
-    private static readonly string SPLIT_RE = @",(?=(?:[^""]*""[^""]*"")*(?![^""]*""))";
-    private static readonly string LINE_SPLIT_RE = @"\r\n|\n\r|\n|\r";
+    private const string LINE_SPLIT_RE = @"\r\n|\n\r|\n|\r";
     private static readonly char[] TRIM_CHARS = { '\"' };
-    private static readonly string[] RequiredHeaders = { "BHT", "Tms", "Td", "D", "Ri", "Rmf", "Rm", "H", "PSP", "SP" };
+    public static readonly string[] RequiredHeaders = { "BHT", "Tms", "Td", "D", "Ri", "Rmf", "Rm", "H", "PSP", "SP" };
 
-    public static List<CalculationInput> Read(string file)
+    public static List<CalculationInput> Read(string file, char delimiter = ',')
     {
         var list = new List<CalculationInput>();
         var lines = Regex.Split(file, LINE_SPLIT_RE);
 
         if (lines.Length <= 1) return list;
 
-        var header = Regex.Split(lines[0], SPLIT_RE);
+        var header = SplitLine(lines[0], delimiter);
         var headerLookup = CreateHeaderLookup(header);
 
         ValidateHeaders(headerLookup);
 
         for (var i = 1; i < lines.Length; i++)
         {
-            var values = Regex.Split(lines[i], SPLIT_RE);
+            var values = SplitLine(lines[i], delimiter);
             if (values.Length == 0 || values[0] == "") continue;
 
             list.Add(new CalculationInput(
@@ -59,13 +58,12 @@ public class CSVReader
     private static void ValidateHeaders(Dictionary<string, int> headerLookup)
     {
         foreach (var requiredHeader in RequiredHeaders)
-        {
             if (!headerLookup.ContainsKey(requiredHeader))
                 throw new FormatException($"Missing required column '{requiredHeader}'.");
-        }
     }
 
-    private static float ParseRequiredValue(IReadOnlyList<string> values, IReadOnlyDictionary<string, int> headerLookup, string columnName, int rowNumber)
+    private static float ParseRequiredValue(IReadOnlyList<string> values, IReadOnlyDictionary<string, int> headerLookup,
+        string columnName, int rowNumber)
     {
         var columnIndex = headerLookup[columnName];
         if (columnIndex >= values.Count)
@@ -76,9 +74,20 @@ public class CSVReader
         if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int intValue))
             return intValue;
 
-        if (float.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out float floatValue))
-            return floatValue;
+        return float.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out float floatValue) 
+            ? floatValue 
+            : throw new FormatException($"Invalid numeric value '{value}' in column '{columnName}' on row {rowNumber + 1}.");
+    }
 
-        throw new FormatException($"Invalid numeric value '{value}' in column '{columnName}' on row {rowNumber + 1}.");
+    private static string[] SplitLine(string line, char delimiter)
+    {
+        var pattern = delimiter switch
+        {
+            ',' => @",(?=(?:[^""]*""[^""]*"")*(?![^""]*""))",
+            '\t' => @"\t(?=(?:[^""]*""[^""]*"")*(?![^""]*""))",
+            _ => throw new NotSupportedException($"Unsupported delimiter '{delimiter}'.")
+        };
+
+        return Regex.Split(line, pattern);
     }
 }

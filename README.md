@@ -9,7 +9,7 @@ In its current form, the application calculates:
 
 The application supports both:
 - single-value input through the UI
-- bulk calculation from CSV files
+- bulk calculation from delimited text, JSON, or Excel workbooks
 
 ## Background
 
@@ -34,8 +34,8 @@ Note: the paper discusses the broader formation-evaluation workflow, including h
 
 - Standalone desktop Unity application
 - Single-record calculation through a form-based UI
-- Bulk import from CSV
-- Bulk export to CSV
+- Bulk import from CSV, TSV, JSON, and XLSX
+- Bulk export to CSV, TSV, JSON, and XLSX
 - Cross-platform file picking through StandaloneFileBrowser
 - Input validation and clearer row-level CSV error reporting
 
@@ -54,19 +54,32 @@ For each calculation, the application expects these inputs:
 - `PSP`
 - `SP`
 
-## CSV Format
+## File Formats
 
-The importer expects a header row with these columns:
+Delimited-text import expects a header row with these columns:
 
 ```csv
 BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP
 ```
 
-The exported output includes both inputs and computed values:
+Delimited-text export includes both inputs and computed values:
 
 ```csv
 BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP,Tf,Rw,Vsh
 ```
+
+Supported formats:
+
+- `CSV` for spreadsheet and general interchange
+- `TSV` for tab-delimited text workflows
+- `JSON` for structured interchange and automation
+- `XLSX` for native spreadsheet workflows
+
+JSON import accepts either:
+
+- a single record object
+- an array of record objects
+- an object containing a `records` array
 
 ## Project Status
 
