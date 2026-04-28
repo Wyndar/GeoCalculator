@@ -52,7 +52,7 @@ public sealed class ApplicationOverlayController
 
     public void ShowWarning(string message)
     {
-        if (warningPanel == null || warningText == null)
+        if (!warningPanel || !warningText)
             return;
 
         ConfigureWarningDialog(message, null);
@@ -60,7 +60,7 @@ public sealed class ApplicationOverlayController
 
     public void ShowEmptyExportWarning(string message, Action onAccepted)
     {
-        if (warningPanel == null || warningText == null)
+        if (!warningPanel || !warningText)
             return;
 
         ConfigureWarningDialog(message, onAccepted);
@@ -71,13 +71,13 @@ public sealed class ApplicationOverlayController
     public void AcknowledgeWarning()
     {
         var confirmAction = warningConfirmAction;
-        DismissWarning();
+        DismissWarning(confirmAction == null);
         confirmAction?.Invoke();
     }
 
     public void ShowSaveAsPopup(string defaultExtension, Action<string> onConfirmed, Action onCancelled)
     {
-        if (saveAsPanel == null)
+        if (!saveAsPanel)
         {
             ShowWarning("Save Error!" + Environment.NewLine + "Save As popup is not configured.");
             onCancelled?.Invoke();
@@ -99,7 +99,7 @@ public sealed class ApplicationOverlayController
         EnsureWarningUi();
         warningConfirmAction = onConfirmed;
 
-        if (warningTitleText != null)
+        if (warningTitleText)
             warningTitleText.text = WarningDialogTitle;
 
         warningText.text = message;
@@ -108,38 +108,39 @@ public sealed class ApplicationOverlayController
         UpdateInterruptPanelState();
     }
 
-    private void DismissWarning()
+    private void DismissWarning(bool updateInterruptState = true)
     {
         warningConfirmAction = null;
 
-        if (warningPanel != null)
+        if (warningPanel)
             warningPanel.SetActive(false);
 
-        if (warningText != null)
+        if (warningText)
             warningText.text = string.Empty;
 
-        if (warningTitleText != null)
+        if (warningTitleText)
             warningTitleText.text = WarningDialogTitle;
 
         ConfigureDefaultWarningActionButton(true, "OK");
-        UpdateInterruptPanelState();
+        if (updateInterruptState)
+            UpdateInterruptPanelState();
     }
 
     private void CacheWarningUi()
     {
-        if (warningPanel == null)
+        if (!warningPanel)
             return;
 
         warningTitleText = warningPanel.transform.Find(WarningTitleObjectName)?.GetComponent<TMP_Text>();
         warningActionButton = warningPanel.GetComponentInChildren<Button>(true);
-        warningActionButtonText = warningActionButton != null
+        warningActionButtonText = warningActionButton
             ? warningActionButton.GetComponentInChildren<TMP_Text>(true)
             : null;
     }
 
     private void EnsureWarningUi()
     {
-        if (warningActionButton == null || warningText == null)
+        if (!warningActionButton || !warningText)
             CacheWarningUi();
     }
 
@@ -242,14 +243,14 @@ public sealed class ApplicationOverlayController
 
     private void SetSaveAsSelection(string extension)
     {
-        if (saveAsToggleGroup == null || string.IsNullOrWhiteSpace(extension))
+        if (!saveAsToggleGroup || string.IsNullOrWhiteSpace(extension))
             return;
 
         var normalizedExtension = extension.Trim().TrimStart('.').ToLowerInvariant();
         foreach (var toggle in saveAsToggleGroup.GetComponentsInChildren<Toggle>(true))
         {
             var label = toggle.GetComponentInChildren<TMP_Text>(true);
-            if (label == null)
+            if (!label)
                 continue;
 
             toggle.isOn = string.Equals(
@@ -261,11 +262,11 @@ public sealed class ApplicationOverlayController
 
     private void ConfigureDefaultWarningActionButton(bool isVisible, string label)
     {
-        if (warningActionButton == null)
+        if (!warningActionButton)
             return;
 
         warningActionButton.gameObject.SetActive(isVisible);
-        if (warningActionButtonText != null && !string.IsNullOrEmpty(label))
+        if (warningActionButtonText && !string.IsNullOrEmpty(label))
             warningActionButtonText.text = label;
     }
 
@@ -301,7 +302,7 @@ public sealed class ApplicationOverlayController
 
     private void UpdateInterruptPanelState()
     {
-        if (interruptPanelButton == null)
+        if (!interruptPanelButton)
             return;
 
         interruptPanelButton.gameObject.SetActive(RequiresInterruptOverlay);

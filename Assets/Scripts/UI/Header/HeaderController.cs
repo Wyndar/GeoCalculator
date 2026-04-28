@@ -1,5 +1,8 @@
 using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 // ReSharper disable InconsistentNaming
 
@@ -47,6 +50,11 @@ public sealed class HeaderController : MonoBehaviour
         CloseAllDropdowns();
         applicationManager.ShowInfoScreen();
         RefreshHeaderVisualState();
+    }
+
+    private void Update()
+    {
+        HandleKeyboardShortcuts();
     }
 
     private HeaderTabButton ConfigureHeaderButton(string childName, HeaderTabButton.HeaderButtonKind kind)
@@ -138,29 +146,7 @@ public sealed class HeaderController : MonoBehaviour
             return;
 
         CloseAllDropdowns();
-
-        switch (routeName)
-        {
-            case "Open":
-                applicationManager.GetDataFile();
-                break;
-            case "Save":
-                applicationManager.SaveDataFile();
-                break;
-            case "Save As":
-                applicationManager.SaveDataFileAs();
-                break;
-            case "Single Input":
-                applicationManager.SwitchToSingleInput();
-                break;
-            case "Bulk Input":
-                applicationManager.SwitchToBulkInput();
-                break;
-            case "Clear":
-                applicationManager.ClearCurrentData();
-                break;
-        }
-
+        ExecuteRoute(routeName);
         RefreshHeaderVisualState();
     }
 
@@ -218,6 +204,96 @@ public sealed class HeaderController : MonoBehaviour
             default:
                 return true;
         }
+    }
+
+    private void HandleKeyboardShortcuts()
+    {
+        if (applicationManager == null || applicationManager.RequiresInterruptOverlay || IsTextInputFocused())
+            return;
+
+        var keyboard = Keyboard.current;
+        if (keyboard == null)
+            return;
+
+        var ctrlPressed = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
+        var shiftPressed = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
+
+        if (ctrlPressed && shiftPressed && keyboard.sKey.wasPressedThisFrame)
+        {
+            TryExecuteShortcut("Save As");
+            return;
+        }
+
+        if (ctrlPressed && keyboard.oKey.wasPressedThisFrame)
+        {
+            TryExecuteShortcut("Open");
+            return;
+        }
+
+        if (ctrlPressed && keyboard.sKey.wasPressedThisFrame)
+        {
+            TryExecuteShortcut("Save");
+            return;
+        }
+
+        if (shiftPressed && keyboard.sKey.wasPressedThisFrame)
+        {
+            TryExecuteShortcut("Single Input");
+            return;
+        }
+
+        if (shiftPressed && keyboard.bKey.wasPressedThisFrame)
+        {
+            TryExecuteShortcut("Bulk Input");
+            return;
+        }
+
+        if (shiftPressed && keyboard.cKey.wasPressedThisFrame)
+            TryExecuteShortcut("Clear");
+    }
+
+    private void TryExecuteShortcut(string routeName)
+    {
+        if (!CanSelectRoute(routeName))
+            return;
+
+        CloseAllDropdowns();
+        ExecuteRoute(routeName);
+        RefreshHeaderVisualState();
+    }
+
+    private void ExecuteRoute(string routeName)
+    {
+        switch (routeName)
+        {
+            case "Open":
+                applicationManager.GetDataFile();
+                break;
+            case "Save":
+                applicationManager.SaveDataFile();
+                break;
+            case "Save As":
+                applicationManager.SaveDataFileAs();
+                break;
+            case "Single Input":
+                applicationManager.SwitchToSingleInput();
+                break;
+            case "Bulk Input":
+                applicationManager.SwitchToBulkInput();
+                break;
+            case "Clear":
+                applicationManager.ClearCurrentData();
+                break;
+        }
+    }
+
+    private static bool IsTextInputFocused()
+    {
+        var selectedObject = EventSystem.current?.currentSelectedGameObject;
+        if (selectedObject == null)
+            return false;
+
+        return selectedObject.GetComponentInParent<TMP_InputField>() != null;
     }
 
     private Color GetFutaPurple() => applicationManager.FutaPurple;
