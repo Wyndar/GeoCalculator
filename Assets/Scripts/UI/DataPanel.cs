@@ -1,10 +1,23 @@
 using TMPro;
 using System.Globalization;
 using UnityEngine;
+// ReSharper disable InconsistentNaming
 
 public class DataPanel : MonoBehaviour
 {
-    [SerializeField] private TMP_Text BHTText, TmsText, TdText, DText, RiText, RmfText, RmText, HText, PSPText, SPText, TfText, RwText, VshText;
+    [SerializeField] private TMP_Text BHTText,
+        TmsText,
+        TdText,
+        DText,
+        RiText,
+        RmfText,
+        RmText,
+        HText,
+        PSPText,
+        SPText,
+        TfText,
+        RwText,
+        VshText;
 
     public void SetText(CalculationInput input, CalculationResult result)
     {
@@ -23,8 +36,5 @@ public class DataPanel : MonoBehaviour
         VshText.text = FormatFloat(result.Vsh);
     }
 
-    private static string FormatFloat(float value)
-    {
-        return value.ToString("G", CultureInfo.InvariantCulture);
-    }
+    private static string FormatFloat(float value) => value.ToString("G", CultureInfo.InvariantCulture);
 }
