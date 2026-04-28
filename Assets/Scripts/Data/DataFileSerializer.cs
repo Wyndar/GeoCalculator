@@ -12,12 +12,20 @@ using UnityEngine;
 public static class DataFileSerializer
 {
     private const string CsvHeader = "BHT,Tms,Td,D,Ri,Rmf,Rm,H,PSP,SP,Tf,Rw,Vsh";
-    private const string DefaultExtension = ".csv";
+    public const string DefaultExtension = ".csv";
 
     public static readonly ExtensionFilter[] OpenFilters =
     {
         new("Supported Data", "csv", "tsv", "json", "xlsx"),
         new("Delimited Text", "csv", "tsv"),
+        new("JSON", "json"),
+        new("Excel Workbook", "xlsx")
+    };
+
+    public static readonly ExtensionFilter[] SaveFilters =
+    {
+        new("CSV", "csv"),
+        new("TSV", "tsv"),
         new("JSON", "json"),
         new("Excel Workbook", "xlsx")
     };
