@@ -1,15 +1,26 @@
 # GeoCalculator
 
-GeoCalculator is a standalone Unity application for SP-log based petrophysical calculations. It is designed to speed up repetitive formation-evaluation work by replacing manual chart-based workflows with direct numeric calculation and CSV import/export.
+GeoCalculator is a standalone Unity desktop application for SP-log based petrophysical calculations. It is built to reduce repetitive manual chart work by turning the workflow into direct numeric calculation with both single-entry and bulk file-based input.
 
-In its current form, the application calculates:
+The current application outputs:
+
 - `Tf` - formation temperature at depth
 - `Rw` - formation water resistivity
 - `Vsh` - volume of shale
 
-The application supports both:
-- single-value input through the UI
-- bulk calculation from delimited text, JSON, or Excel workbooks
+## Downloads
+
+Packaged downloads are distributed through GitHub Releases.
+
+Available now:
+
+- `GeoCalculator-Windows.zip`
+- `GeoCalculator-Linux.zip`
+- `GeoCalculator-macOS.zip`
+- `GeoCalculator-sample-data.zip`
+- `SHA256SUMS.txt`
+
+The sample data archive is produced from the tracked [sample-data](sample-data/) folder.
 
 ## Background
 
@@ -18,10 +29,12 @@ This software is associated with the paper:
 [GEOCALCULATOR, AN APPLICATION SOFTWARE FOR THE DETERMINATION OF VOLUME OF SHALE AND FORMATION WATER RESISTIVITY FROM SP LOGS](https://www.scirj.org/apr-2025-paper.php?rp=P04251017)
 
 Authors:
+
 - Benson Akinbode Olisa
 - Adedamola Bill Folaranmi
 
 Publication:
+
 - Scientific Research Journal (SCIRJ), Volume XIII, Issue IV, April 2025
 - ISSN `2201-2796`
 - DOI `10.31364/SCIRJ/v13.i04.2025.P04251017`
@@ -32,27 +45,35 @@ Note: the paper discusses the broader formation-evaluation workflow, including h
 
 ## Features
 
-- Standalone desktop Unity application
 - Single-record calculation through a form-based UI
-- Bulk import from CSV, TSV, JSON, and XLSX
-- Bulk export to CSV, TSV, JSON, and XLSX
+- Bulk import from `CSV`, `TSV`, `JSON`, and `XLSX`
+- Bulk export to `CSV`, `TSV`, `JSON`, and `XLSX`
+- Save to the current opened or previously saved file path
+- Save As with explicit output-type selection
+- Keyboard shortcuts for common file and view actions
 - Cross-platform file picking through StandaloneFileBrowser
-- Input validation and clearer row-level CSV error reporting
 
 ## Required Inputs
 
 For each calculation, the application expects these inputs:
 
-- `BHT`
-- `Tms`
-- `Td`
-- `D`
-- `Ri`
-- `Rmf`
-- `Rm`
-- `H`
-- `PSP`
-- `SP`
+- `BHT` - Bottom Hole Temperature
+- `Tms` - Total Surface Temperature
+- `Td` - Total Depth
+- `D` - Depth to the clean sand
+- `Ri` - Resistivity of the Short Normal
+- `Rmf` - Resistivity of the mud filtrate
+- `Rm` - Resistivity of the mud
+- `H` - Thickness of the clean sand
+- `PSP` - Pseudo Static Potential / Shale SP
+- `SP` - SP of clean sand
+
+Default units:
+
+- Temperature in Fahrenheit
+- Distance in feet
+- Resistivity in ohm-metre
+- SP values in millivolts
 
 ## File Formats
 
@@ -81,26 +102,50 @@ JSON import accepts either:
 - an array of record objects
 - an object containing a `records` array
 
-## Project Status
+## App Workflow
 
-This repository has been updated to Unity 6 and lightly modernized from its earlier implementation. Recent cleanup work includes:
+- `Single Input` is used for one calculation entered directly in the UI
+- `Bulk Input` is used to open a supported data file and calculate multiple rows at once
+- `Open` imports data from `CSV`, `TSV`, `JSON`, or `XLSX`
+- `Save` writes back to the current file path when one exists
+- `Save As` always prompts for an output type and destination
 
-- Unity 6 project upgrade
-- normalized TextMesh Pro assets and project hygiene
-- safer numeric parsing
-- typed CSV import models instead of string-keyed dictionaries
-- direct file loading instead of deprecated `WWW`
-- clearer bulk-import error handling
+Keyboard shortcuts:
+
+- `Ctrl+O` Open
+- `Ctrl+S` Save
+- `Ctrl+Shift+S` Save As
+- `Shift+S` Single Input
+- `Shift+B` Bulk Input
+- `Shift+C` Clear
+
+## Sample Data
+
+Tracked sample files live under [sample-data](sample-data/):
+
+- [sample-data/csv](sample-data/csv/)
+- [sample-data/tsv](sample-data/tsv/)
+- [sample-data/json](sample-data/json/)
+- [sample-data/xlsx](sample-data/xlsx/)
 
 ## Development Notes
 
 - Engine: Unity `6000.3.10f1`
 - Main scene: [Assets/Scenes/Well Log Calculator.unity](Assets/Scenes/Well%20Log%20Calculator.unity)
-- Core scripts:
-  - [Assets/ApplicationManager.cs](Assets/ApplicationManager.cs)
-  - [Assets/CSVReader.cs](Assets/CSVReader.cs)
-  - [Assets/DataPanel.cs](Assets/DataPanel.cs)
-  - [Assets/CalculationModels.cs](Assets/CalculationModels.cs)
+
+Core code locations:
+
+- [Assets/Scripts/Core](Assets/Scripts/Core/)
+- [Assets/Scripts/Data](Assets/Scripts/Data/)
+- [Assets/Scripts/UI](Assets/Scripts/UI/)
+
+Primary application flow:
+
+- [Assets/Scripts/UI/App/ApplicationManager.cs](Assets/Scripts/UI/App/ApplicationManager.cs)
+- [Assets/Scripts/UI/App/ApplicationFileWorkflow.cs](Assets/Scripts/UI/App/ApplicationFileWorkflow.cs)
+- [Assets/Scripts/UI/App/ApplicationOverlayController.cs](Assets/Scripts/UI/App/ApplicationOverlayController.cs)
+- [Assets/Scripts/UI/App/ApplicationInputController.cs](Assets/Scripts/UI/App/ApplicationInputController.cs)
+
 
 ## Citation
 

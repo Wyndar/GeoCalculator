@@ -78,3 +78,6 @@ crashlytics-build.properties
 
 # Local NuGet-style package extraction cache
 /packages/
+
+# Local staged release artifacts and checksum manifests
+/release-assets/
